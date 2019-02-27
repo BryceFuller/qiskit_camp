@@ -11,7 +11,9 @@ from qiskit import execute
 seed = 123456789
 r.seed(seed)
 
-def main(theta, num_qubits, layers):
+
+
+def build_model(theta, num_qubits, layers):
 	qreg = QuantumRegister(num_qubits, "q_mod")
 	creg = ClassicalRegister(num_qubits, "c_mod")
 	model = QuantumCircuit(qreg, creg)
@@ -21,15 +23,14 @@ def main(theta, num_qubits, layers):
 
 	for l in range(layers):
 		
-		#Add layer of (pseudo)random gates
+		#Add layer of (pseudo)random single qubit rotations
 		for n in range(num_qubits):
 			ri = r.randint(0,2)
 			f = funcs[ri]
-			print(l,n)
 			f(theta[l][n], qreg[n])
 		
 		model.barrier()	
-		#Naive 2-qubit gates
+		#Pattern with 2-qubit gates
 		#change the step size in range to affect density of cx layer
 		for n in range(0,num_qubits,2):
 			if n+1+l%2 < num_qubits:
@@ -38,10 +39,16 @@ def main(theta, num_qubits, layers):
 		model.barrier()
 	return model
 
-####################
-#\\\\\\\\\\\\\\\\\\\
-####################
+if __name__ == "__main__":
+	build_model(theta, num_qubits, layers)
 
+#######################################################
+#\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+######################################################
+
+#These are default parameters for testing purposes
+
+'''
 n = 10
 l = 2
 
@@ -54,9 +61,7 @@ for i in range(l):
 	theta.append(list())
 	for j in range(n):
 		theta[i].append(j)
-print(theta)
-model = main(theta, n, l)
-    
-print(model)
-# theta = tuple()
 
+model = build_model(theta, n, l)
+print(model)
+'''
