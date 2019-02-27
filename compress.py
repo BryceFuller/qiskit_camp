@@ -8,7 +8,24 @@ from copy import deepcopy
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
 
 
-def build_compression_model(orig_circuit):
+def build_compression_model(registers, random_seed=0):
+    """ Given a set of input registers, builds a parametrised model of random
+    gate operations which seek to approximate some other (equally-sized) target
+    circuit.
+
+    Returns:
+        QuantumCircuit: a circuit consisting of random operations on the given
+        registers.
+    """
+    model_circuit = QuantumCircuit(*registers)
+
+    # TODO: Store some internal parametrization that can be optimised over.
+    # TODO: Create random set of gate operations based on parametrization.
+
+    return model_circuit
+
+
+def swap_test_with_compression_model(orig_circuit):
     """ Given a circuit, builds a parametrised sub-circuit that runs in
     parallel with and approximately models (with compression) the original
     circuit.
@@ -22,10 +39,9 @@ def build_compression_model(orig_circuit):
     # modelled.
     new_registers = [reg.__class__(reg.size, '{}_model'.format(reg.name))
                      for reg in orig_circuit.qregs]
-    model_circuit = QuantumCircuit(*new_registers)
 
     # TODO: Build the model's compression circuit here.
-    # model_circuit.x(*new_registers)
+    model_circuit = build_compression_model(new_registers)
 
     # Append the two circuits together.
     top_circuit = orig_circuit + model_circuit
