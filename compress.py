@@ -126,9 +126,10 @@ def compute_approximation_fidelity(target_circuit, backend='qasm_simulator', n_s
 
     # Return a measurement of fidelity
     result_counts = job.result().get_counts(final_circuit)
-    fidelity = result_counts.get('1', n_shots - result_counts.get('0', 0)) / sum(result_counts.values())
+    fidelity = result_counts.get('1', n_shots) / n_shots
 
     results_fidelity_list.append(fidelity)
+    logging.critical("Fidelity: {}".format(fidelity))
 
     return fidelity
 
@@ -144,9 +145,9 @@ def cross_validate_qnn_depth(n_shots, n_iters, n_layers, run=0):
     """
 
     logging.critical("Creating the circuit...")
-    in_strings = ["1010", "0110", "0011"]
-    in_weights = [4, 7, 2]
-    target_circuit = pmds(in_weights, in_strings)
+    in_strings = ["101", "011"]
+    in_weights = [4, 7]
+    target_circuit = pmds(in_weights, in_strings, mode='noancilla')
     logging.critical("Circuit depth (uncompiled): {}".format(target_circuit.depth()))
 
     # TODO: Compile the circuit to determine a measure of optimised circuit depth
@@ -201,8 +202,9 @@ def experiment_crop(fn, experiment_name):
     """
     experiment_runner = xy.Runner(fn, var_names=None)
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    logging.critical("Running experiments: {}".format(timestr))
-    experiment_harvester = xy.Harvester(experiment_runner, data_name="{}_results_{}.h5".format(experiment_name, timestr))
+    filename = "{}_results_{}.h5".format(experiment_name, timestr)
+    logging.critical("Running experiments: {}".format(filename))
+    experiment_harvester = xy.Harvester(experiment_runner, data_name=filename)
     experiment = experiment_harvester.Crop()
 
     yield experiment
@@ -210,6 +212,7 @@ def experiment_crop(fn, experiment_name):
     experiment.grow_missing(parallel=True)
     results = experiment.reap(wait=True, overwrite=True)
     logging.critical(results)
+    logging.critical("Saved experiments: {}".format(filename))
 
 
 if __name__ == "__main__":
@@ -217,9 +220,9 @@ if __name__ == "__main__":
     logging.critical("Running the experiments...")
     with experiment_crop(cross_validate_qnn_depth, "experiments") as experiment:
         grid_search = {
-            'n_shots': [100],
-            'n_iters': [300],
-            'n_layers': [3, 4, 5],
+            'n_shots': [1000],
+            'n_iters': [100],
+            'n_layers': [3, 5],
             'run': range(50),
         }
         experiment.sow_combos(grid_search)
