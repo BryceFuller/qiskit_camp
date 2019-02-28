@@ -56,8 +56,8 @@ def build_compression_model(registers, model_parameters):
     model_circuit = QuantumCircuit(*registers)
 
     # Reshape model parameters so they make sense
-    n_params = int(len(model_parameters) / 3 / model_circuit.width())
-    model_parameters = np.array(model_parameters).reshape((n_params, model_circuit.width(), 3))
+    n_layers = int(len(model_parameters) / 3 / model_circuit.width())
+    model_parameters = np.array(model_parameters).reshape((n_layers, model_circuit.width(), 3))
 
     # TODO: Store some internal parametrization that can be optimised over.
     # TODO: Create random set of gate operations based on parametrization.
@@ -153,7 +153,7 @@ def cross_validate_qnn_depth(target_circuit, n_shots, n_iters, n_layers, run=0):
     initial_point = np.random.uniform(low=variable_bounds_single[0],
                                       high=variable_bounds_single[1],
                                       size=(n_params,)).tolist()
-    logging.info("Initial point: {}".format(initial_point))
+    logging.critical("Initial point: {}".format(initial_point))
 
     # Store resulting information
     results_fidelity_list = []
@@ -177,7 +177,8 @@ def cross_validate_qnn_depth(target_circuit, n_shots, n_iters, n_layers, run=0):
 
     # Output results
     return xr.Dataset({
-        "fidelity": xr.DataArray(np.array(results_fidelity_list).reshape((n_iters, 2)), coords={"iteration": range(n_iters), "plusminus": range(2)}, dims=["iteration", "plusminus"])
+        "fidelity": xr.DataArray(np.array(results_fidelity_list).reshape((n_iters, 2)), coords={"iteration": range(n_iters), "plusminus": range(2)}, dims=["iteration", "plusminus"]),
+        "last_theta": xr.DataArray(np.array(last_params).reshape((n_layers, target_circuit.width(), 3)), coords={"layer": range(n_layers), "qubit": range(target_circuit.width()), "angle": ["theta", "phi", "lambda"]}, dims=["layer", "qubit", "angle"])
     })
 
 
@@ -201,21 +202,18 @@ def experiment_crop(fn, experiment_name):
 
 if __name__ == "__main__":
 
-    q0 = QuantumRegister(1, 'q0')
-    circuit = QuantumCircuit(q0)
-    circuit.h(q0)
-
+    logging.critical("Creating the circuit...")
     in_strings = ["1010","0110", "0011"]
-    in_weights = [4,7,2]
+    in_weights = [4, 7, 2]
     circuit = pmds(in_weights, in_strings)
     circuit.draw()
 
-    # Fog of war
+    logging.critical("Running the experiments...")
     with experiment_crop(cross_validate_qnn_depth, "experiments") as experiment:
         grid_search = {
             'n_shots': [100],
             'n_iters': [300],
-            'n_layers': [3,4,5],
+            'n_layers': [3, 4, 5],
             'run': range(50),
         }
         constants = {
