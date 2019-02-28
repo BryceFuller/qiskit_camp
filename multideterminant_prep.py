@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[15]:
+# In[1]:
 
 
 import numpy as np
@@ -14,7 +14,7 @@ import math
 import numpy as np
 
 
-# In[16]:
+# In[9]:
 
 
 def PrepareMultiDeterminantState(weights, determinants, normalize = True, mode = 'basic'):
@@ -58,12 +58,12 @@ def PrepareMultiDeterminantState(weights, determinants, normalize = True, mode =
     qubits = QuantumRegister(n, 'q')
     cqub = QuantumRegister(1, 'c')
     
-    if mode == 'basic':
-        ancillas = QuantumRegister(n-1, 'a')
-        registers = [qubits, cqub, ancillas]
-    else:
+    if mode == 'noancilla':
         # no ancillas
         registers = [qubits, cqub]
+    else:
+        ancillas = QuantumRegister(n-1, 'a')
+        registers = [qubits, cqub, ancillas]
         
     # initialize
     circ = QuantumCircuit(*registers)
@@ -123,12 +123,12 @@ def PrepareMultiDeterminantState(weights, determinants, normalize = True, mode =
         # Now must do an n-qubit Toffoli to change the |1> to |0>
         # but controlled on the |D_l> bitstring
         flip_all(circ, qubits, old_det)
-        if mode != 'basic':
+        if mode == 'noancilla':
             # no ancillas
-            circ.mct(qubits, cqub, None, mode = 'noancillas')
+            circ.mct(qubits, cqub[0], None, mode = 'noancilla')
         else:
-            #circ.mct(qubits, cqub, ancillas, mode = 'basic')
-            nToffoliAncillas(circ, qubits, ancillas, cqub)
+            circ.mct(qubits, cqub[0], ancillas, mode = 'basic')
+            #nToffoliAncillas(circ, qubits, ancillas, cqub)
         flip_all(circ, qubits, old_det) # undo
         
         #if step > 0:
@@ -152,7 +152,12 @@ def PrepareMultiDeterminantState(weights, determinants, normalize = True, mode =
         circ.z(cqub)
     # Remove the |1>
     flip_all(circ, qubits, new_det)
-    nToffoliAncillas(circ, qubits, ancillas, cqub)
+    if mode == 'noancilla':
+        # no ancillas
+        circ.mct(qubits, cqub[0], None, mode = 'noancilla')
+    else:
+        circ.mct(qubits, cqub[0], ancillas, mode = 'basic')    
+        #nToffoliAncillas(circ, qubits, ancillas, cqub)
     flip_all(circ, qubits, new_det) # undo    
         
     return circ
@@ -171,7 +176,7 @@ def flip_all(circ, tgt, bits):
             circ.x(tgt[i])
 
 
-# In[4]:
+# In[ ]:
 
 
 def nToffoliAncillas(circ, ctrl, anc, tgt):
@@ -199,7 +204,7 @@ def nToffoliAncillas(circ, ctrl, anc, tgt):
 #circuit_drawer(circ)
 
 
-# In[18]:
+# In[ ]:
 
 
 '''weights3 = np.array([1, -1, 2])
@@ -223,10 +228,4 @@ for i in range(len(vec)):
     if abs(vec[i]) > 10**-4:
         print('{}: {}'.format(i, vec[i]))
 '''
-
-
-# In[ ]:
-
-
-
 
