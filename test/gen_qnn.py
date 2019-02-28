@@ -13,9 +13,9 @@ r.seed(seed)
 
 
 
-def build_model(theta, num_qubits, layers):
+def build_model(theta):
 	layers = len(theta)
-	num_qubits = len(theta[0]
+	num_qubits = len(theta[0])
 	qreg = QuantumRegister(num_qubits, "q_mod")
 	creg = ClassicalRegister(num_qubits, "c_mod")
 	model = QuantumCircuit(qreg, creg)
@@ -42,7 +42,7 @@ def build_model(theta, num_qubits, layers):
 	return model
 
 if __name__ == "__main__":
-	build_model(theta, num_qubits, layers)
+	build_model(theta)
 
 #######################################################
 #\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -64,6 +64,6 @@ for i in range(l):
 	for j in range(n):
 		theta[i].append(j)
 
-model = build_model(theta, n, l)
+model = build_model(theta)
 print(model)
 '''
