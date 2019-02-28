@@ -5,6 +5,9 @@ from functools import partial
 from contextlib import contextmanager
 import time
 
+from multideterminant_prep import PrepareMultiDeterminantState as pmds
+
+
 # Local
 
 # External
@@ -202,13 +205,18 @@ if __name__ == "__main__":
     circuit = QuantumCircuit(q0)
     circuit.h(q0)
 
+    in_strings = ["1010","0110", "0011"]
+    in_weights = [4,7,2]
+    circuit = pmds(in_weights, in_strings)
+    circuit.draw()
+
     # Fog of war
     with experiment_crop(cross_validate_qnn_depth, "experiments") as experiment:
         grid_search = {
-            'n_shots': [100, 1000],
-            'n_iters': [100],
-            'n_layers': [3],
-            'run': range(100),
+            'n_shots': [100],
+            'n_iters': [300],
+            'n_layers': [3,4,5],
+            'run': range(50),
         }
         constants = {
             'target_circuit': circuit
