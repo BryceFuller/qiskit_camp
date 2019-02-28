@@ -1,15 +1,16 @@
 # Python
 import logging
 from copy import deepcopy
+from functools import partial
 
 # Local
 
 # External
-from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, Aer, execute
+from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, execute
 from qiskit.aqua.components.optimizers import *
 
 
-def build_compression_model(registers, random_seed=0):
+def build_compression_model(registers, model_parameters=None):
     """ Given a set of input registers, builds a parametrised model of random
     gate operations which seek to approximate some other (equally-sized) target
     circuit.
@@ -22,11 +23,12 @@ def build_compression_model(registers, random_seed=0):
 
     # TODO: Store some internal parametrization that can be optimised over.
     # TODO: Create random set of gate operations based on parametrization.
+    # build_model(model_parameters)
 
     return model_circuit
 
 
-def swap_test_with_compression_model(target_circuit):
+def swap_test_with_compression_model(target_circuit, model_parameters=None):
     """ Given a circuit, builds a parametrised sub-circuit that runs in
     parallel with and approximately models (with compression) the original
     circuit.
@@ -42,7 +44,7 @@ def swap_test_with_compression_model(target_circuit):
                      for reg in target_circuit.qregs]
 
     # TODO: Build the model's compression circuit here.
-    model_circuit = build_compression_model(new_registers)
+    model_circuit = build_compression_model(new_registers, model_parameters)
 
     # Append the two circuits together.
     top_circuit = target_circuit + model_circuit
@@ -72,7 +74,7 @@ def swap_test_with_compression_model(target_circuit):
     return top_circuit
 
 
-def compute_approximation_fidelity(target_circuit, backend='qasm_simulator', n_shots=1000):
+def compute_approximation_fidelity(target_circuit, backend='qasm_simulator', n_shots=1000, model_parameters=None):
     """ Performs a set of runs on the target circuit and an approximation model
     to compute the approximation's fidelity.
 
@@ -80,7 +82,7 @@ def compute_approximation_fidelity(target_circuit, backend='qasm_simulator', n_s
         float: a measure of fidelity in [0, 1], where 1 represents the maximum
         achievable approximation of the target circuit.
     """
-    final_circuit = swap_test_with_compression_model(target_circuit)
+    final_circuit = swap_test_with_compression_model(target_circuit, model_parameters)
 
     # Execute the SWAP test circuit
     simulator = Aer.get_backend(backend)
@@ -91,6 +93,7 @@ def compute_approximation_fidelity(target_circuit, backend='qasm_simulator', n_s
     fidelity = result_counts.get('1', result_counts.get('0')) / sum(result_counts.values())
     return fidelity
 
+    
 def cross_validate_qnn_depth(target_circuit, min_l, max_l, stepsize=1, optimizer="SPSA", optimizer_params=None, backend='qasm_simulator', n_shots=1000):
     '''Fits many qnn's of differing depth to approximate the state produced by applying the target_circuit
     to the all zero state.
@@ -108,6 +111,24 @@ def cross_validate_qnn_depth(target_circuit, min_l, max_l, stepsize=1, optimizer
 	current_instance = {}
 	current_instance["layers"]
         #Run optimization routine with l-layer qnn
+
+
+if __name__ == "__main__":
+
+    q0 = QuantumRegister(1, 'q0')
+    circuit = QuantumCircuit(q0)
+    circuit.h(q0)
+
+    # Number of parameters
+    n_layers = 5
+    n_params = circuit.width() * n_layers
+
+    test_circuit = swap_test_with_compression_model(circuit)
+
+    objective_function = partial(compute_approximation_fidelity, circuit, "qasm_simulator", 100)
+
+    optimizer = SPSA(max_trials=100)
+    optimizer.optimize(n_params, objective_function, variable_bounds=None, initial_point=None)
         #Transfer data into dict
         #TODO calculate compiled depth (for simulator this is always 2*l)
     	
