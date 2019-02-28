@@ -20,6 +20,7 @@ def build_compression_model(registers, model_parameters=None):
         registers.
     """
     model_circuit = QuantumCircuit(*registers)
+    logging.critical("Building new model approximation with parameters {}".format(model_parameters))
 
     # TODO: Store some internal parametrization that can be optimised over.
     # TODO: Create random set of gate operations based on parametrization.
@@ -93,14 +94,14 @@ def compute_approximation_fidelity(target_circuit, backend='qasm_simulator', n_s
     fidelity = result_counts.get('1', result_counts.get('0')) / sum(result_counts.values())
     return fidelity
 
-    
+
 def cross_validate_qnn_depth(target_circuit, min_l, max_l, stepsize=1, optimizer="SPSA", optimizer_params=None, backend='qasm_simulator', n_shots=1000):
     '''Fits many qnn's of differing depth to approximate the state produced by applying the target_circuit
     to the all zero state.
-    
+
     Returns:
-        array of dictionaries, one for each depth value tried. 
-        Each dictionar is of the form: 
+        array of dictionaries, one for each depth value tried.
+        Each dictionar is of the form:
             {depth: integer number of parameterized layers (single qubit & two qubit rotations are one layer,)
             thetas: array of best found thetas,
             fidelity: float indicating inner product between target state and the qnn output state,
@@ -108,9 +109,9 @@ def cross_validate_qnn_depth(target_circuit, min_l, max_l, stepsize=1, optimizer
     '''
     results = []
     for l in range(min_l, max_l, stepsize):
-	current_instance = {}
-	current_instance["layers"]
-        #Run optimization routine with l-layer qnn
+        current_instance = {}
+        current_instance["layers"]
+        # Run optimization routine with l-layer qnn
 
 
 if __name__ == "__main__":
@@ -119,20 +120,28 @@ if __name__ == "__main__":
     circuit = QuantumCircuit(q0)
     circuit.h(q0)
 
-    # Number of parameters
+    # Configuration
+    n_shots = 100
+    n_trials = 100
     n_layers = 5
     n_params = circuit.width() * n_layers
 
-    test_circuit = swap_test_with_compression_model(circuit)
+    # Build variable bounds
+    variable_bounds_single = (0., 2*np.pi)
+    variable_bounds = [variable_bounds_single] * n_params
+    initial_point = np.random.uniform(low=variable_bounds_single[0],
+                                      high=variable_bounds_single[1],
+                                      size=(n_params,))
 
-    objective_function = partial(compute_approximation_fidelity, circuit, "qasm_simulator", 100)
+    # Partially define the objective function
+    objective_function = partial(compute_approximation_fidelity, circuit, "qasm_simulator", n_shots)
 
-    optimizer = SPSA(max_trials=100)
-    optimizer.optimize(n_params, objective_function, variable_bounds=None, initial_point=None)
-        #Transfer data into dict
-        #TODO calculate compiled depth (for simulator this is always 2*l)
-    	
-    
-    
-    
-    
+    # Call the optimiser
+    optimizer = SPSA(max_trials=n_trials)
+    result = optimizer.optimize(n_params, objective_function,
+                                variable_bounds=variable_bounds, initial_point=initial_point)
+
+    logging.critical(result)
+
+    #Transfer data into dict
+    #TODO calculate compiled depth (for simulator this is always 2*l)
