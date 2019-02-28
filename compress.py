@@ -91,7 +91,7 @@ def compute_approximation_fidelity(target_circuit, backend='qasm_simulator', n_s
     fidelity = result_counts.get('1', result_counts.get('0')) / sum(result_counts.values())
     return fidelity
 
-def cross_validate_qnn_depth(target_circuit, min_d, max_d, stepsize=1, optimizer="SPSA", optimizer_params=None, backend='qasm_simulator', n_shots=1000):
+def cross_validate_qnn_depth(target_circuit, min_l, max_l, stepsize=1, optimizer="SPSA", optimizer_params=None, backend='qasm_simulator', n_shots=1000):
     '''Fits many qnn's of differing depth to approximate the state produced by applying the target_circuit
     to the all zero state.
     
@@ -103,11 +103,14 @@ def cross_validate_qnn_depth(target_circuit, min_d, max_d, stepsize=1, optimizer
             fidelity: float indicating inner product between target state and the qnn output state,
             [ADD LATER] history: array of fidelities for intermediate training steps}
     '''
-    
-    for d in range(min_d, max_d, stepsize):
-        #Run optimization routine with d-layer qnn
+    results = []
+    for l in range(min_l, max_l, stepsize):
+	current_instance = {}
+	current_instance["layers"]
+        #Run optimization routine with l-layer qnn
         #Transfer data into dict
-        pass
+        #TODO calculate compiled depth (for simulator this is always 2*l)
+    	
     
     
     
