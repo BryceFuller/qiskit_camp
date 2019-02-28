@@ -224,9 +224,9 @@ if __name__ == "__main__":
     logging.critical("Running the experiments...")
     with experiment_crop(cross_validate_qnn_depth, "experiments") as experiment:
         grid_search = {
-            'n_shots': [1000],
-            'n_iters': [100],
-            'n_layers': [3, 5],
+            'n_shots': [100, 1000],
+            'n_iters': [200],
+            'n_layers': [2, 3, 5],
             'run': range(50),
         }
         constants = {
