@@ -18,7 +18,7 @@ inputs:
     n_runs: number of simulations to run in parrallel
               
  returns:
-     xr.Dataset object with #TODO
+     xr.Dataset object encoding the parameters and fidelities for various QNN circuit depths
 
 
 #### def build_compression_model(registers, model_parameters):
