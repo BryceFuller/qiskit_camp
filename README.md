@@ -3,6 +3,8 @@
 
 ### Usage:
 
+See the compress.py's __main__ block for an example experimental run.
+
 
 #### cross_validate_qnn_depth(target_circuit, n_shots, n_iters, n_layers, run=0):
 
