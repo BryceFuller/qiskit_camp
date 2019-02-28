@@ -32,7 +32,6 @@ def build_model_from_parameters(circuit, theta):
         # Add layer of (pseudo)random single qubit rotations
         for n, (reg, qubit_idx) in enumerate(all_qubits):
             circuit.u3(theta[l][n][0], theta[l][n][1], theta[l][n][2], reg[qubit_idx])
-        circuit.barrier()
 
         # Pattern with 2-qubit gates
         # change the step size in range to affect density of cx layer
@@ -41,7 +40,6 @@ def build_model_from_parameters(circuit, theta):
                 reg_1, qubit_idx_1 = all_qubits[n + (l % 2)]
                 reg_2, qubit_idx_2 = all_qubits[(n + 1) + (l % 2)]
                 circuit.cx(reg_1[qubit_idx_1], reg_2[qubit_idx_2])
-        circuit.barrier()
 
 
 def build_compression_model(registers, model_parameters):
