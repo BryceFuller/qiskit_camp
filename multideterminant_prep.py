@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[15]:
 
 
 import numpy as np
@@ -9,11 +9,12 @@ from qiskit import Aer, QuantumCircuit, ClassicalRegister, QuantumRegister
 from qiskit import BasicAer, execute
 from qiskit.quantum_info import Pauli, state_fidelity, basis_state, process_fidelity
 import qiskit.aqua
+import qiskit.aqua.utils.mct
 import math
 import numpy as np
 
 
-# In[2]:
+# In[16]:
 
 
 def PrepareMultiDeterminantState(weights, determinants, normalize = True, mode = 'basic'):
@@ -154,7 +155,7 @@ def PrepareMultiDeterminantState(weights, determinants, normalize = True, mode =
     nToffoliAncillas(circ, qubits, ancillas, cqub)
     flip_all(circ, qubits, new_det) # undo    
         
-    return circ, qubits, ancillas, cqub
+    return circ
 
 
 # In[3]:
@@ -196,4 +197,36 @@ def nToffoliAncillas(circ, ctrl, anc, tgt):
 
 #from qiskit.tools.visualization import circuit_drawer
 #circuit_drawer(circ)
+
+
+# In[18]:
+
+
+'''weights3 = np.array([1, -1, 2])
+weights3 = weights3 / np.linalg.norm(weights3)
+dets3 = [ (1,0,1), (1,1,0), (0,1,1)] # (5, 6, 3)
+print(weights3)
+def dec(tup):
+    n = len(tup)
+    tot = 0
+    for i in range(n):
+        tot += tup[i] * 2**(n-i-1)
+    return tot
+
+print([dec(tup) for tup in dets3])
+c, _, _, _ = MDCirc(weights3, dets3, mode = 'n')
+
+job = execute(c, sim).result()
+vec = job.get_statevector(c)
+# dets3 = [(1,1,0), (1,0,1), (0,1,1)]
+for i in range(len(vec)):
+    if abs(vec[i]) > 10**-4:
+        print('{}: {}'.format(i, vec[i]))
+'''
+
+
+# In[ ]:
+
+
+
 
