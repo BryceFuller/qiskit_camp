@@ -15,7 +15,7 @@ import pandas as pd
 import numpy as np
 import xarray as xr
 import xyzpy as xy
-from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, execute, Aer
+from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, execute, Aer, tools
 from qiskit.aqua.components.optimizers import SPSA, SLSQP
 
 
@@ -128,14 +128,14 @@ def compute_approximation_fidelity(target_circuit, backend='qasm_simulator', n_s
 
     # Return a measurement of fidelity
     result_counts = job.result().get_counts(final_circuit)
-    fidelity = result_counts.get('1', result_counts.get('0')) / sum(result_counts.values())
+    fidelity = result_counts.get('1', n_shots - result_counts.get('0', 0)) / sum(result_counts.values())
 
     results_fidelity_list.append(fidelity)
 
     return fidelity
 
 
-def cross_validate_qnn_depth(target_circuit, n_shots, n_iters, n_layers, run=0):
+def cross_validate_qnn_depth(n_shots, n_iters, n_layers, run=0):
     """ Runs a single cross-validation experiment with the given parameters.
 
     Returns:
@@ -144,6 +144,17 @@ def cross_validate_qnn_depth(target_circuit, n_shots, n_iters, n_layers, run=0):
         with all other experiment datasets, so in theory every experiment
         should return a fairly consistent set of data.
     """
+
+    logging.critical("Creating the circuit...")
+    in_strings = ["1010", "0110", "0011"]
+    in_weights = [4, 7, 2]
+    target_circuit = pmds(in_weights, in_strings)
+    logging.critical("Circuit depth (uncompiled): {}".format(target_circuit.depth()))
+
+    # TODO: Compile the circuit to determine a measure of optimised circuit depth
+    # tools.compiler.compile(target_circuit, backend)
+    # logging.critical("Circuit depth (compiled): {}".format(compiled_depth))
+
     # Configuration
     n_params = target_circuit.width() * n_layers * 3
 
@@ -153,7 +164,7 @@ def cross_validate_qnn_depth(target_circuit, n_shots, n_iters, n_layers, run=0):
     initial_point = np.random.uniform(low=variable_bounds_single[0],
                                       high=variable_bounds_single[1],
                                       size=(n_params,)).tolist()
-    logging.critical("Initial point: {}".format(initial_point))
+    # logging.critical("Initial point: {}".format(initial_point))
 
     # Store resulting information
     results_fidelity_list = []
@@ -178,7 +189,10 @@ def cross_validate_qnn_depth(target_circuit, n_shots, n_iters, n_layers, run=0):
     # Output results
     return xr.Dataset({
         "fidelity": xr.DataArray(np.array(results_fidelity_list).reshape((n_iters, 2)), coords={"iteration": range(n_iters), "plusminus": range(2)}, dims=["iteration", "plusminus"]),
-        "last_theta": xr.DataArray(np.array(last_params).reshape((n_layers, target_circuit.width(), 3)), coords={"layer": range(n_layers), "qubit": range(target_circuit.width()), "angle": ["theta", "phi", "lambda"]}, dims=["layer", "qubit", "angle"])
+        "last_theta": xr.DataArray(np.array(last_params).reshape((n_layers, target_circuit.width(), 3)), coords={"layer": range(n_layers), "qubit": range(target_circuit.width()), "angle": ["theta", "phi", "lambda"]}, dims=["layer", "qubit", "angle"]),
+        "uncompiled_target_depth": xr.DataArray(target_circuit.depth()),
+        # "compiled_target_depth": xr.DataArray(compiled_depth),
+        "uncompiled_model_depth": xr.DataArray(2 * n_layers),
     })
 
 
@@ -202,12 +216,6 @@ def experiment_crop(fn, experiment_name):
 
 if __name__ == "__main__":
 
-    logging.critical("Creating the circuit...")
-    in_strings = ["1010","0110", "0011"]
-    in_weights = [4, 7, 2]
-    circuit = pmds(in_weights, in_strings)
-    circuit.draw()
-
     logging.critical("Running the experiments...")
     with experiment_crop(cross_validate_qnn_depth, "experiments") as experiment:
         grid_search = {
@@ -216,7 +224,4 @@ if __name__ == "__main__":
             'n_layers': [3, 4, 5],
             'run': range(50),
         }
-        constants = {
-            'target_circuit': circuit
-        }
-        experiment.sow_combos(grid_search, constants=constants)
+        experiment.sow_combos(grid_search)
