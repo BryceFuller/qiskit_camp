@@ -2,12 +2,15 @@
 import logging
 from copy import deepcopy
 from functools import partial
+from contextlib import contextmanager
 
 # Local
 
 # External
 import pandas as pd
 import numpy as np
+import xarray as xr
+import xyzpy as xy
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, execute, Aer
 from qiskit.aqua.components.optimizers import SPSA, SLSQP
 
@@ -128,45 +131,17 @@ def compute_approximation_fidelity(target_circuit, backend='qasm_simulator', n_s
     return fidelity
 
 
-def cross_validate_qnn_depth(target_circuit, min_l, max_l, stepsize=1, optimizer="SPSA", optimizer_params=None, backend='qasm_simulator', n_shots=1000):
-    '''Fits many qnn's of differing depth to approximate the state produced by applying the target_circuit
-    to the all zero state.
+def cross_validate_qnn_depth(target_circuit, n_shots, n_iters, n_layers, run=0):
+    """ Runs a single cross-validation experiment with the given parameters.
 
     Returns:
-        array of dictionaries, one for each depth value tried.
-        Each dictionar is of the form:
-            {depth: integer number of parameterized layers (single qubit & two qubit rotations are one layer,)
-            thetas: array of best found thetas,
-            fidelity: float indicating inner product between target state and the qnn output state,
-            [ADD LATER] history: array of fidelities for intermediate training steps}
-    '''
-    results = []
-    for l in range(min_l, max_l, stepsize):
-        current_instance = {}
-        current_instance["layers"]
-        # Run optimization routine with l-layer qnn
-
-
-logger = logging.getLogger()
-
-
-if __name__ == "__main__":
-
-    # XXX: Reset if you want consistent initial state
-    # seed = 123456789
-    # np.random.seed(seed)
-    logger.setLevel(logging.INFO)
-    logging.info("Generating test circuit...")
-
-    q0 = QuantumRegister(1, 'q0')
-    circuit = QuantumCircuit(q0)
-    circuit.h(q0)
-
+        xr.Dataset: an xarray Dataset consisting of any number of DataArrays of
+        data regarding the results of this experiment. This Dataset will be merged
+        with all other experiment datasets, so in theory every experiment
+        should return a fairly consistent set of data.
+    """
     # Configuration
-    n_shots  = 1000
-    n_iters  = 10
-    n_layers = 2
-    n_params = circuit.width() * n_layers * 3
+    n_params = target_circuit.width() * n_layers * 3
 
     # Build variable bounds
     variable_bounds_single = (0., 2*np.pi)
@@ -180,7 +155,7 @@ if __name__ == "__main__":
     results_fidelity_list = []
 
     # Partially define the objective function
-    maximisation_function = partial(compute_approximation_fidelity, circuit, "qasm_simulator", n_shots, results_fidelity_list)
+    maximisation_function = partial(compute_approximation_fidelity, target_circuit, "qasm_simulator", n_shots, results_fidelity_list)
     minimization_function = lambda params: -maximisation_function(params)
 
     # Call the optimiser
@@ -189,8 +164,52 @@ if __name__ == "__main__":
                                 variable_bounds=variable_bounds, initial_point=initial_point)
 
     last_params, last_score, _ = result
-    logging.critical("FINAL PARAMETERS: {} --> SCORE: {}".format(last_params, -last_score))
-    logging.critical(results_fidelity_list)
+    logging.critical("FINAL SCORE: {}".format(-last_score))
 
-    # Transfer data into dict
+    # Ignore the first set of fidelities (calibration) and very last one (equal to last_score)
+    results_fidelity_list = results_fidelity_list[-((n_iters * 2) + 1):-1]
+
     # TODO calculate compiled depth (for simulator this is always 2*l)
+
+    # Output results
+    return xr.Dataset({
+        "fidelity": xr.DataArray(np.array(results_fidelity_list).reshape((n_iters, 2)), coords={"iteration": range(n_iters), "plusminus": range(2)}, dims=["iteration", "plusminus"])
+    })
+
+
+@contextmanager
+def experiment_crop(fn, experiment_name):
+    """ Defines how to run a crop of experiments (i.e. all the experiments in
+    the grid) in parallel and store results in a file.
+    """
+    experiment_runner = xy.Runner(fn, var_names=None)
+    experiment_harvester = xy.Harvester(experiment_runner, data_name="{}_results.h5".format(experiment_name))
+    experiment = experiment_harvester.Crop()
+
+    yield experiment
+
+    experiment.grow_missing(parallel=True)
+    results = experiment.reap(wait=True, overwrite=True)
+    logging.critical(results)
+
+
+if __name__ == "__main__":
+
+    q0 = QuantumRegister(1, 'q0')
+    circuit = QuantumCircuit(q0)
+    circuit.h(q0)
+
+    # Fog of war
+    with experiment_crop(cross_validate_qnn_depth, "experiments") as experiment:
+        grid_search = {
+            'n_shots': [100, 1000],
+            'n_iters': [100],
+            'n_layers': [3],
+            'run': range(100),
+        }
+        constants = {
+            'target_circuit': circuit
+        }
+        experiment.sow_combos(grid_search, constants=constants)
+
+    raise SystemExit
