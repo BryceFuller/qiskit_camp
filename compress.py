@@ -134,7 +134,7 @@ def compute_approximation_fidelity(target_circuit, backend='qasm_simulator', n_s
     return fidelity
 
 
-def cross_validate_qnn_depth(n_shots, n_iters, n_layers, run=0):
+def cross_validate_qnn_depth(target_circuit, n_shots, n_iters, n_layers, run=0):
     """ Runs a single cross-validation experiment with the given parameters.
 
     Returns:
@@ -143,12 +143,6 @@ def cross_validate_qnn_depth(n_shots, n_iters, n_layers, run=0):
         with all other experiment datasets, so in theory every experiment
         should return a fairly consistent set of data.
     """
-
-    logging.critical("Creating the circuit...")
-    in_strings = ["101", "011"]
-    in_weights = [4, 7]
-    target_circuit = pmds(in_weights, in_strings, mode='noancilla')
-    logging.critical("Circuit depth (uncompiled): {}".format(target_circuit.depth()))
 
     # TODO: Compile the circuit to determine a measure of optimised circuit depth
     # tools.compiler.compile(target_circuit, backend)
@@ -202,7 +196,7 @@ def experiment_crop(fn, experiment_name):
     """
     experiment_runner = xy.Runner(fn, var_names=None)
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    filename = "{}_results_{}.h5".format(experiment_name, timestr)
+    filename = "experiment_results/{}_{}.h5".format(experiment_name, timestr)
     logging.critical("Running experiments: {}".format(filename))
     experiment_harvester = xy.Harvester(experiment_runner, data_name=filename)
     experiment = experiment_harvester.Crop()
@@ -216,6 +210,16 @@ def experiment_crop(fn, experiment_name):
 
 
 if __name__ == "__main__":
+    """
+    Example which defines a circuit and then runs a set of experiments, defined
+    by the grid_search parameters, across a parallel set of processes.
+    """
+
+    logging.critical("Creating the circuit...")
+    in_strings = ["101", "011"]
+    in_weights = [4, 7]
+    target_circuit = pmds(in_weights, in_strings, mode='noancilla')
+    logging.critical("Circuit depth (uncompiled): {}".format(target_circuit.depth()))
 
     logging.critical("Running the experiments...")
     with experiment_crop(cross_validate_qnn_depth, "experiments") as experiment:
@@ -225,4 +229,7 @@ if __name__ == "__main__":
             'n_layers': [3, 5],
             'run': range(50),
         }
-        experiment.sow_combos(grid_search)
+        constants = {
+            'target_circuit': target_circuit
+        }
+        experiment.sow_combos(grid_search, constants=constants)
