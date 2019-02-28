@@ -3,6 +3,7 @@ import logging
 from copy import deepcopy
 from functools import partial
 from contextlib import contextmanager
+import time
 
 # Local
 
@@ -183,7 +184,9 @@ def experiment_crop(fn, experiment_name):
     the grid) in parallel and store results in a file.
     """
     experiment_runner = xy.Runner(fn, var_names=None)
-    experiment_harvester = xy.Harvester(experiment_runner, data_name="{}_results.h5".format(experiment_name))
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    logging.critical("Running experiments: {}".format(timestr))
+    experiment_harvester = xy.Harvester(experiment_runner, data_name="{}_results_{}.h5".format(experiment_name, timestr))
     experiment = experiment_harvester.Crop()
 
     yield experiment
@@ -211,5 +214,3 @@ if __name__ == "__main__":
             'target_circuit': circuit
         }
         experiment.sow_combos(grid_search, constants=constants)
-
-    raise SystemExit
