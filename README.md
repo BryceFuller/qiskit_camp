@@ -1,9 +1,10 @@
-# qiskit_camp
-## State preparation via Quantum compression 
+# VQompress
+## Methods for state preparation via Quantum compression 
 
 ### Usage:
 
-See the compress.py's __main__ block for an example experimental run.
+See the compress.py's __main__ block for an example of a multi-process experimental run (across a
+grid of parameters), or notebooks/Test compress for a full Jupyter notebook example.
 
 
 #### cross_validate_qnn_depth(target_circuit, n_shots, n_iters, n_layers, run=0):
