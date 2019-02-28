@@ -14,6 +14,8 @@ r.seed(seed)
 
 
 def build_model(theta, num_qubits, layers):
+	layers = len(theta)
+	num_qubits = len(theta[0]
 	qreg = QuantumRegister(num_qubits, "q_mod")
 	creg = ClassicalRegister(num_qubits, "c_mod")
 	model = QuantumCircuit(qreg, creg)
