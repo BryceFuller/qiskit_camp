@@ -216,7 +216,7 @@ if __name__ == "__main__":
     """
 
     logging.critical("Creating the circuit...")
-    in_strings = ["101", "011"]
+    in_strings = ["0101", "0011"]
     in_weights = [4, 7]
     target_circuit = pmds(in_weights, in_strings, mode='noancilla')
     logging.critical("Circuit depth (uncompiled): {}".format(target_circuit.depth()))
@@ -225,8 +225,8 @@ if __name__ == "__main__":
     with experiment_crop(cross_validate_qnn_depth, "experiments") as experiment:
         grid_search = {
             'n_shots': [1000],
-            'n_iters': [100],
-            'n_layers': [3, 5],
+            'n_iters': [200],
+            'n_layers': [2, 3, 4, 5],
             'run': range(50),
         }
         constants = {
