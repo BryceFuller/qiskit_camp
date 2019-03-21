@@ -16,7 +16,10 @@ import numpy as np
 import xarray as xr
 import xyzpy as xy
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, execute, Aer, tools
-from qiskit.aqua.components.optimizers import SPSA, SLSQP
+#from qiskit.aqua.components.optimizers import SPSA, SLSQP
+from qiskit.aqua.components.optimizers import SLSQP
+from custom_spsa import SPSA
+
 
 
 def build_model_from_parameters(circuit, theta):
@@ -148,38 +151,57 @@ def cross_validate_qnn_depth(target_circuit, n_shots, n_iters, n_layers, run=0):
     # tools.compiler.compile(target_circuit, backend)
     # logging.critical("Circuit depth (compiled): {}".format(compiled_depth))
 
-    # Configuration
-    n_params = target_circuit.width() * n_layers * 3
 
-    # Build variable bounds
-    variable_bounds_single = (0., 2*np.pi)
-    variable_bounds = [variable_bounds_single] * n_params
-    initial_point = np.random.uniform(low=variable_bounds_single[0],
-                                      high=variable_bounds_single[1],
-                                      size=(n_params,)).tolist()
-    # logging.critical("Initial point: {}".format(initial_point))
+    initial_point = []
 
-    # Store resulting information
-    results_fidelity_list = []
+    for layer in range(1,n_layers+1):
+	    # Configuration
+	    layer=3
+	    n_params = target_circuit.width() * layer * 3
+	    variable_bounds_single = (0., 2*np.pi)
+	    variable_bounds = [variable_bounds_single] * n_params
 
-    # Partially define the objective function
-    maximisation_function = partial(compute_approximation_fidelity, target_circuit, "qasm_simulator", n_shots, results_fidelity_list)
-    minimization_function = lambda params: -maximisation_function(params)
+	    if len(initial_point) < n_params:
+	    	#Do a quick check to make sure the number of existing params makes sense
+	    	if ((n_params - len(initial_point)) % (3*target_circuit.width())) != 0:
+	    		raise Exception("Unexpected number of parameters encountered") 
+	    	initial_point = initial_point + (np.random.uniform(low=variable_bounds_single[0],
+	                                      high=variable_bounds_single[1],
+	                                      size=(n_params - len(initial_point),)).tolist())
 
-    # Call the optimiser
-    optimizer = SPSA(max_trials=n_iters, save_steps=1)
-    result = optimizer.optimize(n_params, minimization_function,
-                                variable_bounds=variable_bounds, initial_point=initial_point)
+	    print("LEN INITIAL POINT:" + str(len(initial_point)))
+	    print(len(variable_bounds))
+	    # Build variable bounds
+	    
+	   
+	    # logging.critical("Initial point: {}".format(initial_point))
 
-    last_params, last_score, _ = result
-    logging.critical("FINAL SCORE: {}".format(-last_score))
+	    # Store resulting information
+	    results_fidelity_list = []
 
-    # Ignore the first set of fidelities (calibration) and very last one (equal to last_score)
-    results_fidelity_list = results_fidelity_list[-((n_iters * 2) + 1):-1]
+	    # Partially define the objective function
+	    maximisation_function = partial(compute_approximation_fidelity, target_circuit, "qasm_simulator", n_shots, results_fidelity_list)
+	    minimization_function = lambda params: -maximisation_function(params)
+
+	    # Call the optimiser
+	    optimizer = SPSA(max_trials=n_iters, save_steps=1)
+	    
+
+	    result = optimizer.optimize(n_params, minimization_function,
+	                                variable_bounds=variable_bounds, initial_point=initial_point)
+
+	    last_params, last_score, _ = result
+
+	    logging.critical("FINAL SCORE: {}".format(-last_score))
+	    logging.critical("FINAL PARAMS: {}".format(len(last_params)))
+
+	    # Ignore the first set of fidelities (calibration) and very last one (equal to last_score)
+	    results_fidelity_list = results_fidelity_list[-((n_iters * 2) + 1):-1]
 
     # TODO calculate compiled depth (for simulator this is always 2*l)
 
     # Output results
+    print("FLAAAG")
     return xr.Dataset({
         "fidelity": xr.DataArray(np.array(results_fidelity_list).reshape((n_iters, 2)), coords={"iteration": range(n_iters), "plusminus": range(2)}, dims=["iteration", "plusminus"]),
         "last_theta": xr.DataArray(np.array(last_params).reshape((n_layers, target_circuit.width(), 3)), coords={"layer": range(n_layers), "qubit": range(target_circuit.width()), "angle": ["theta", "phi", "lambda"]}, dims=["layer", "qubit", "angle"]),
@@ -203,7 +225,12 @@ def experiment_crop(fn, experiment_name):
 
     yield experiment
 
-    experiment.grow_missing(parallel=True)
+    #replace parallel=True with num_workers=# 
+    #...to keep stop my computer from hurting itself
+    #experiment.grow_missing(parallel=True)
+    #experiment.grow_missing(num_workers=5)
+    experiment.grow_missing()
+
     results = experiment.reap(wait=True, overwrite=True)
     logging.critical(results)
     logging.critical("Saved experiments: {}".format(filename))
@@ -216,7 +243,7 @@ if __name__ == "__main__":
     """
 
     logging.critical("Creating the circuit...")
-    in_strings = ["0101", "0011"]
+    in_strings = ["01", "10"]
     in_weights = [4, 7]
     target_circuit = pmds(in_weights, in_strings, mode='noancilla')
     logging.critical("Circuit depth (uncompiled): {}".format(target_circuit.depth()))
@@ -224,9 +251,9 @@ if __name__ == "__main__":
     logging.critical("Running the experiments...")
     with experiment_crop(cross_validate_qnn_depth, "experiments") as experiment:
         grid_search = {
-            'n_shots': [1000],
-            'n_iters': [200],
-            'n_layers': [2, 3, 4, 5],
+            'n_shots': [100],
+            'n_iters': [10],
+            'n_layers': [3],
 
             'run': range(50),
         }
